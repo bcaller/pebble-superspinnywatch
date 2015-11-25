@@ -1,0 +1,32 @@
+{
+    "appKeys": {},
+    "capabilities": [
+        ""
+    ],
+    "companyName": "BenCaller",
+    "longName": "SuperSpinnyWatch",
+    "projectType": "native",
+    "resources": {
+        "media": [
+            {
+                "characterRegex": "[0-9:.]",
+                "file": "fonts/COOL_FONT",
+                "name": "FONT_COOL_46",
+                "targetPlatforms": [
+                    "basalt"
+                ],
+                "type": "font"
+            }
+        ]
+    },
+    "sdkVersion": "3",
+    "shortName": "Spinny",
+    "targetPlatforms": [
+        "basalt"
+    ],
+    "uuid": "28e42a8a-cc8e-46e1-bce7-cf10e24f2aa0",
+    "versionLabel": "1.0",
+    "watchapp": {
+        "watchface": true
+    }
+}
