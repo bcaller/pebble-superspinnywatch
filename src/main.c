@@ -19,7 +19,6 @@ static GFont font_date_small;
 static GFont font_temp_vsmall;
 static char weather_layer_buffer[32];
 static GColor colours[4];
-static AppTimer *timer = NULL;
 
 uint8_t offset = 0;
 uint8_t anim_ticks = TICKS; //Start with spinning animation
@@ -146,7 +145,7 @@ static void spinny_layer_draw(Layer *layer, GContext *ctx) {
 
 static void animation_timer_callback(void *d) {
     if (--anim_ticks) {
-        app_timer_reschedule(timer, FRAME_DURATION);
+        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
     }
     offset = (offset + 5) % 180;
     layer_mark_dirty(spinny_layer);
@@ -159,7 +158,7 @@ static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
 
     if (!anim_ticks) {
         anim_ticks = tick_time->tm_min ? TICKS / 4 : TICKS * 3 / 4; // Massive hour
-        app_timer_reschedule(timer, FRAME_DURATION);
+        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
     }
     //Update weather
     if (tick_time->tm_min % 30 == 0) {
@@ -177,7 +176,7 @@ static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
 
 static void tap_handler(AccelAxisType axis, int32_t direction) {
     if (!anim_ticks) {
-        app_timer_reschedule(timer, FRAME_DURATION);
+        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
     }
     anim_ticks = TICKS;
 }
@@ -247,7 +246,7 @@ static void main_window_load(Window *window) {
 #elif PBL_SDK_3
     bluetooth_callback(connection_service_peek_pebble_app_connection());
 #endif
-    app_timer_register(10, animation_timer_callback, NULL);
+    animation_timer_callback(NULL);
 }
 
 static void main_window_unload(Window *w) {
