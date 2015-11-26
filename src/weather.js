@@ -25,17 +25,18 @@ function locationSuccess(pos) {
 
       // Temperature in Kelvin requires adjustment
       var temperature = Math.round(json.main.temp - 273.15);
-      console.log("Temperature is " + temperature);
 
       // Conditions
       var conditions = json.weather[0].main;      
-      console.log("Conditions are " + conditions);
-      console.log(json.name);
+      var description = "heavy rain & drizzle" || json.weather[0].description;
+      console.log(temperature + " Conditions " + conditions + " " + description + " " + json.name);
+           
+      description = description.replace(" intensity ", " ").replace(" and ", " & ").replace(" with ", " w/ ").replace("shower ", "");
       
       // Assemble dictionary using our keys
       var dictionary = {
         "KEY_TEMPERATURE": temperature,
-        "KEY_CONDITIONS": conditions
+        "KEY_CONDITIONS": description.length > 20 ? conditions : description
       };
           console.log(navigator.battery, navigator.getBattery, navigator);
       // Send to Pebble

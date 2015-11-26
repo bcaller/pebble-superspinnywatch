@@ -39,7 +39,7 @@ static const GPathInfo RIBBON_PATHINFO = {
 };
 static GPath *ribbon_path;
 
-void draw_bordered(GContext *ctx, const char *s_buffer, uint8_t w, uint8_t h, FontInfo *fo, uint8_t x, uint8_t y) {
+void draw_bordered(GContext *ctx, const char *s_buffer, uint8_t w, uint8_t h, FontInfo *fo, int16_t x, int16_t y) {
     graphics_draw_text(ctx, s_buffer, fo, GRect(x, y, w, h), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
 }
 
@@ -56,7 +56,7 @@ static GColor invertIfDisconnected(GColor c) {
     return bluetooth ? c : invert(c);
 }
 
-void surround_text(GContext *ctx, const char *s_buffer, uint8_t w, FontInfo *fo, uint8_t y, uint8_t h) {
+void surround_text(GContext *ctx, const char *s_buffer, uint8_t w, FontInfo *fo, int16_t y, uint8_t h) {
     draw_bordered(ctx, s_buffer, w, h, fo, 2, y);
     draw_bordered(ctx, s_buffer, w, h, fo, -2, y);
     draw_bordered(ctx, s_buffer, w, h, fo, 0, y - 2);
