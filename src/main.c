@@ -1,6 +1,6 @@
 #include <pebble.h>
 
-#define TICKS 30
+#define TICKS 40
 #define FRAME_DURATION 175
 #define MIN_RIBBONS 5
 #define MAX_EXTRA_RIBBONS 7
@@ -14,15 +14,16 @@ static Layer *time_layer;
 static Layer *spinny_layer;
 static Layer *date_layer;
 static Layer *weather_layer;
-static GFont *f;
 static GFont font_main_big;
 static GFont font_date_small;
 static GFont font_temp_vsmall;
 static char weather_layer_buffer[32];
+static GColor colours[4];
+static AppTimer *timer = NULL;
 
-int32_t offset = 0;
-int anim_ticks = TICKS; //Start with spinning animation
-int num_ribbons = 22;
+uint8_t offset = 0;
+uint8_t anim_ticks = TICKS; //Start with spinning animation
+uint8_t num_ribbons = 22;
 bool bluetooth = true;
 bool charging = false;
 
@@ -39,7 +40,7 @@ static const GPathInfo RIBBON_PATHINFO = {
 };
 static GPath *ribbon_path;
 
-void draw_bordered(GContext *ctx, const char *s_buffer, int16_t w, int16_t h, FontInfo *fo, int16_t x, int16_t y) {
+void draw_bordered(GContext *ctx, const char *s_buffer, uint8_t w, uint8_t h, FontInfo *fo, uint8_t x, uint8_t y) {
     graphics_draw_text(ctx, s_buffer, fo, GRect(x, y, w, h), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
 }
 
@@ -56,7 +57,7 @@ static GColor invertIfDisconnected(GColor c) {
    return bluetooth ? c : invert(c);
 }
 
-void surround_text(GContext *ctx, const char *s_buffer, int w, FontInfo *fo, int16_t y, int h) {
+void surround_text(GContext *ctx, const char *s_buffer, uint8_t w, FontInfo *fo, uint8_t y, uint8_t h) {
     draw_bordered(ctx, s_buffer, w, h, fo, 2, y);
     draw_bordered(ctx, s_buffer, w, h, fo, -2, y);
     draw_bordered(ctx, s_buffer, w, h, fo, 0, y-2);
@@ -80,14 +81,14 @@ static void time_draw(Layer *layer, GContext *ctx) {
     GRect bounds = layer_get_bounds(layer);
 
     graphics_context_set_text_color(ctx, invertIfDisconnected(bg));
-    int y = PBL_IF_ROUND_ELSE(55, 49);
+    uint8_t y = PBL_IF_ROUND_ELSE(55, 49);
     //Border
     surround_text(ctx, time_buffer, bounds.size.w, font_main_big, y, 50);
     //Drop Shadow
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 2, y+2);
-    draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 3, y+3);
+    //draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 3, y+3);
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 4, y+4);
-    draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 5, y+5);
+    //draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 5, y+5);
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 6, y+6);
     //Text
     graphics_context_set_text_color(ctx, invertIfDisconnected(charging ? GColorGreen : GColorWhite));
@@ -126,21 +127,14 @@ static void spinny_layer_draw(Layer *layer, GContext *ctx) {
     graphics_context_set_fill_color(ctx, invertIfDisconnected(bg));
     graphics_fill_rect(ctx, bounds, 0, GCornersAll);
 
-
     ribbon_path = gpath_create(&RIBBON_PATHINFO);
 
     GPoint center = GPoint(bounds.size.w / 2, bounds.size.h / 2);
     gpath_move_to(ribbon_path, center);
 
-    GColor colours[4] = {GColorYellow, GColorFromHEX(0xff7c11), GColorBrilliantRose, GColorCyan};
-   /*if(!bluetooth) {
-      colours[2] = GColorRed;
-      colours[3] = GColorVividViolet;
-   }*/
-    //Draw each ribbon
-    for (int i = 0; i < num_ribbons; i++) {
+    for (uint8_t i = 0; i < num_ribbons; i++) {
         graphics_context_set_fill_color(ctx, invertIfDisconnected(colours[i % 4]));
-        gpath_rotate_to(ribbon_path, TRIG_MAX_ANGLE / num_ribbons / 2 * i - TRIG_MAX_ANGLE / 360 * offset);
+        gpath_rotate_to(ribbon_path, TRIG_MAX_ANGLE / num_ribbons / 2 * i - TRIG_MAX_ANGLE * offset / 360);
         gpath_draw_filled(ctx, ribbon_path);
     }
     graphics_context_set_fill_color(ctx, invertIfDisconnected(GColorWhite));
@@ -149,7 +143,7 @@ static void spinny_layer_draw(Layer *layer, GContext *ctx) {
 
 static void animation_timer_callback(void *d) {
     if (--anim_ticks) {
-        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
+        app_timer_reschedule(timer, FRAME_DURATION);
     }
     offset = (offset + 5) % 180;
     layer_mark_dirty(spinny_layer);
@@ -158,12 +152,13 @@ static void animation_timer_callback(void *d) {
 static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
    APP_LOG(APP_LOG_LEVEL_DEBUG, "Minute tick");
     layer_mark_dirty(time_layer);
-       layer_mark_dirty(date_layer);
+    layer_mark_dirty(date_layer);
 
     if (!anim_ticks) {
-        anim_ticks = tick_time->tm_min ? TICKS / 3 : TICKS; // Massive hour
-        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
+        anim_ticks = tick_time->tm_min ? TICKS / 4 : TICKS * 3 / 4; // Massive hour
+        app_timer_reschedule(timer, FRAME_DURATION);
     }
+    //Update weather
    if(tick_time->tm_min % 30 == 0) {
      // Begin dictionary
      DictionaryIterator *iter;
@@ -179,7 +174,7 @@ static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
 
 static void tap_handler(AccelAxisType axis, int32_t direction) {
     if (!anim_ticks) {
-        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
+        app_timer_reschedule(timer, FRAME_DURATION);
     }
     anim_ticks = TICKS;
 }
@@ -206,23 +201,27 @@ static void main_window_load(Window *window) {
    //font_main_big = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_COOL_46)); 
    font_date_small = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
    font_temp_vsmall = fonts_get_system_font(FONT_KEY_GOTHIC_14);
+    colours[0] = GColorYellow;
+    colours[1] = GColorFromHEX(0xff7c11);
+    colours[2] = GColorBrilliantRose;
+    colours[3] = GColorCyan;
     // Get information about the Window
     Layer *window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
 
-    // Create the TextLayer with specific bounds
     time_layer = layer_create(bounds);
-
-    // Add it as a child layer to the Window's root layer
+    layer_set_update_proc(time_layer, time_draw);
+    
     spinny_layer = layer_create(bounds);
     layer_set_update_proc(spinny_layer, spinny_layer_draw);
-    layer_add_child(window_layer, spinny_layer);
+    
     date_layer = layer_create(GRect(0, bounds.size.h-35, bounds.size.w, 35));
-   weather_layer = layer_create(GRect(0, 0, bounds.size.w, 35));
-
-    layer_set_update_proc(time_layer, time_draw);
     layer_set_update_proc(date_layer, date_draw);
+    
+    weather_layer = layer_create(GRect(0, 0, bounds.size.w, 35));
     layer_set_update_proc(weather_layer, weather_draw);
+    
+    layer_add_child(window_layer, spinny_layer);
     layer_add_child(window_layer, date_layer);
     layer_add_child(window_layer, weather_layer);
     layer_add_child(window_layer, time_layer);
@@ -245,16 +244,19 @@ static void main_window_load(Window *window) {
    #elif PBL_SDK_3
    bluetooth_callback(connection_service_peek_pebble_app_connection());
    #endif
-   animation_timer_callback(NULL);
+   app_timer_register(10, animation_timer_callback, NULL);
 }
 
 static void main_window_unload(Window *w) {
-    // Destroy TextLayer
     layer_destroy(time_layer);
     layer_destroy(spinny_layer);
     layer_destroy(date_layer);
-   layer_destroy(weather_layer);
+    layer_destroy(weather_layer);
     gpath_destroy(ribbon_path);
+    connection_service_unsubscribe();
+    battery_state_service_unsubscribe();
+    accel_tap_service_unsubscribe();
+    tick_timer_service_unsubscribe();
 }
 
 
@@ -265,8 +267,8 @@ static void deinit() {
 
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
    // Store incoming information
-  static char conditions_buffer[32];
-   static char temp_buffer[32];
+    static char conditions_buffer[32];
+    static char temp_buffer[32];
 
   // Read tuples for data
   Tuple *temp_tuple = dict_find(iterator, KEY_TEMPERATURE);
@@ -324,7 +326,7 @@ static void init() {
    app_message_register_outbox_failed(outbox_failed_callback);
    app_message_register_outbox_sent(outbox_sent_callback);
    // Open AppMessage
-   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
+   app_message_open(128, APP_MESSAGE_OUTBOX_SIZE_MINIMUM);
 }
 
 int main(void) {

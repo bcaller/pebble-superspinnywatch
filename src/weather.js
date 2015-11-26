@@ -1,6 +1,6 @@
 //Stolen from Pebble tutorial
 
-var myAPIKey = '3127ff5285ad4379d1d672c725d11c18';
+var myAPIKey = '411d5ff522acf14ce405414d741cc6c8';
 
 var xhrRequest = function (url, type, callback) {
   var xhr = new XMLHttpRequest();
