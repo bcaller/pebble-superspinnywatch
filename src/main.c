@@ -1,4 +1,4 @@
-#include "../include/pebble.h"
+#include <pebble.h>
 
 static Window *main_window;
 static Layer *time_layer;
