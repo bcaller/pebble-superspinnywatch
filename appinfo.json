@@ -7,17 +7,7 @@
     "longName": "SuperSpinnyWatch",
     "projectType": "native",
     "resources": {
-        "media": [
-            {
-                "characterRegex": "[0-9:.]",
-                "file": "fonts/COOL_FONT",
-                "name": "FONT_COOL_46",
-                "targetPlatforms": [
-                    "basalt"
-                ],
-                "type": "font"
-            }
-        ]
+        "media": []
     },
     "sdkVersion": "3",
     "shortName": "Spinny",

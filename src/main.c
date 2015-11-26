@@ -1,5 +1,10 @@
 #include <pebble.h>
 
+#define TICKS 30
+#define FRAME_DURATION 175
+#define MIN_RIBBONS 5
+#define MAX_EXTRA_RIBBONS 7
+
 static Window *main_window;
 static Layer *time_layer;
 static Layer *spinny_layer;
@@ -9,7 +14,7 @@ static GFont font_main_big;
 static GFont font_date_small;
 
 int32_t offset = 0;
-int anim_ticks = 0;
+int anim_ticks = TICKS; //Start with spinning animation
 int num_ribbons = 22;
 bool bluetooth = true;
 bool charging = false;
@@ -17,16 +22,31 @@ bool charging = false;
 GColor bg;
 
 static const GPathInfo RIBBON_PATHINFO = {
-        4,
-        (GPoint[]) {{3,   0},
-                    {-3,  0},
-                    {-10, -120},
-                    {10,  -120}}
+        6,
+        (GPoint[]) {{-10, -120},
+                    {10,  -120},
+                    {3,   0},
+                    {10, 120},
+                    {-10, 120},
+                    {-3,  0}}
 };
 static GPath *ribbon_path;
 
 void draw_bordered(GContext *ctx, const char *s_buffer, int16_t w, int16_t h, FontInfo *fo, int16_t x, int16_t y) {
     graphics_draw_text(ctx, s_buffer, fo, GRect(x, y, w, h), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
+}
+
+static GColor invert(GColor c) {
+   return (GColor8){ 
+     .a = c.a,
+     .r = 0b11 ^ c.r, 
+     .g = 0b11 ^ c.g, 
+     .b = 0b11 ^ c.b 
+   };
+}
+
+static GColor invertIfDisconnected(GColor c) {
+   return bluetooth ? c : invert(c);
 }
 
 void surround_text(GContext *ctx, const char *s_buffer, int w, FontInfo *fo, int16_t y, int h) {
@@ -52,16 +72,17 @@ static void time_draw(Layer *layer, GContext *ctx) {
 
     GRect bounds = layer_get_bounds(layer);
 
-    graphics_context_set_text_color(ctx, bg);
+    graphics_context_set_text_color(ctx, invertIfDisconnected(bg));
     int y = PBL_IF_ROUND_ELSE(55, 49);
     //Border
     surround_text(ctx, time_buffer, bounds.size.w, font_main_big, y, 50);
     //Drop Shadow
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 2, y+2);
-    draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 3, y+3);
+    //draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 3, y+3);
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 4, y+4);
+    //draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 5, y+5);
     //Text
-    graphics_context_set_text_color(ctx, charging ? GColorGreen : GColorWhite);
+    graphics_context_set_text_color(ctx, invertIfDisconnected(charging ? GColorGreen : GColorWhite));
     graphics_draw_text(ctx, time_buffer, font_main_big, GRect(0, y, bounds.size.w, 50), GTextOverflowModeFill, GTextAlignmentCenter,
                        NULL);
 }
@@ -74,9 +95,9 @@ static void date_draw(Layer *layer, GContext *ctx) {
     static char date_buffer[16];
     strftime(date_buffer, sizeof(date_buffer), "%a %d %b", tick_time);
     GRect bounds = layer_get_bounds(layer);
-   graphics_context_set_text_color(ctx, bg);
+   graphics_context_set_text_color(ctx, invertIfDisconnected(bg));
     surround_text(ctx, date_buffer, bounds.size.w, font_date_small, 0, 30);
-       graphics_context_set_text_color(ctx, GColorWhite);
+       graphics_context_set_text_color(ctx, invertIfDisconnected(GColorWhite));
     graphics_draw_text(ctx, date_buffer, font_date_small, GRect(0, 0, bounds.size.w, 30), GTextOverflowModeFill, GTextAlignmentCenter,
                        NULL);
 }
@@ -84,7 +105,7 @@ static void date_draw(Layer *layer, GContext *ctx) {
 static void spinny_layer_draw(Layer *layer, GContext *ctx) {
     GRect bounds = layer_get_bounds(layer);
 
-    graphics_context_set_fill_color(ctx, bluetooth ? bg : GColorClear);
+    graphics_context_set_fill_color(ctx, invertIfDisconnected(bg));
     graphics_fill_rect(ctx, bounds, 0, GCornersAll);
 
 
@@ -94,25 +115,25 @@ static void spinny_layer_draw(Layer *layer, GContext *ctx) {
     gpath_move_to(ribbon_path, center);
 
     GColor colours[4] = {GColorYellow, GColorFromHEX(0xff7c11), GColorBrilliantRose, GColorCyan};
-   if(!bluetooth) {
+   /*if(!bluetooth) {
       colours[2] = GColorRed;
       colours[3] = GColorVividViolet;
-   }
+   }*/
     //Draw each ribbon
     for (int i = 0; i < num_ribbons; i++) {
-        graphics_context_set_fill_color(ctx, colours[i % 4]);
-        gpath_rotate_to(ribbon_path, TRIG_MAX_ANGLE / num_ribbons * i - TRIG_MAX_ANGLE / 360 * offset);
+        graphics_context_set_fill_color(ctx, invertIfDisconnected(colours[i % 4]));
+        gpath_rotate_to(ribbon_path, TRIG_MAX_ANGLE / num_ribbons / 2 * i - TRIG_MAX_ANGLE / 360 * offset);
         gpath_draw_filled(ctx, ribbon_path);
     }
-    graphics_context_set_fill_color(ctx, GColorWhite);
+    graphics_context_set_fill_color(ctx, invertIfDisconnected(GColorWhite));
     graphics_fill_circle(ctx, GPoint(bounds.size.w / 2, bounds.size.h / 2), 3);
 }
 
 static void animation_timer_callback(void *d) {
     if (--anim_ticks) {
-        app_timer_register(200, animation_timer_callback, NULL);
+        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
     }
-    offset = (offset + 5) % 360;
+    offset = (offset + 5) % 180;
     layer_mark_dirty(spinny_layer);
 }
 
@@ -122,22 +143,23 @@ static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
        layer_mark_dirty(date_layer);
 
     if (!anim_ticks) {
-        anim_ticks = tick_time->tm_min == 0 ? 30 : 10;
-        app_timer_register(200, animation_timer_callback, NULL);
+        anim_ticks = tick_time->tm_min ? TICKS / 3 : TICKS; // Massive hour
+        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
     }
 }
 
 static void tap_handler(AccelAxisType axis, int32_t direction) {
     if (!anim_ticks) {
-        app_timer_register(200, animation_timer_callback, NULL);
+        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
     }
-    anim_ticks = 20;
+    anim_ticks = TICKS;
 }
 
 static void battery_callback(BatteryChargeState state) {
   // Record the new battery level
-  num_ribbons = state.charge_percent * 14 / 100 + 10;
-   if((state.charge_percent * 14) % 100) {
+   int r = state.charge_percent * MAX_EXTRA_RIBBONS;
+   num_ribbons = r / 100 + MIN_RIBBONS;
+   if(r % 100) {
       num_ribbons++;
    }
    charging = state.is_charging;
@@ -145,6 +167,7 @@ static void battery_callback(BatteryChargeState state) {
 }
 
 static void bluetooth_callback(bool connected) {
+   APP_LOG(APP_LOG_LEVEL_DEBUG, "bluetooth");
    bluetooth = connected;
    layer_mark_dirty(spinny_layer);
 }
@@ -161,7 +184,6 @@ static void main_window_load(Window *window) {
     time_layer = layer_create(bounds);
 
     // Add it as a child layer to the Window's root layer
-
     spinny_layer = layer_create(bounds);
     layer_set_update_proc(spinny_layer, spinny_layer_draw);
     layer_add_child(window_layer, spinny_layer);
@@ -190,6 +212,7 @@ static void main_window_load(Window *window) {
    #elif PBL_SDK_3
    bluetooth_callback(connection_service_peek_pebble_app_connection());
    #endif
+   animation_timer_callback(NULL);
 }
 
 static void main_window_unload(Window *w) {
