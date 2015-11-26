@@ -28,7 +28,7 @@ function locationSuccess(pos) {
 
       // Conditions
       var conditions = json.weather[0].main;      
-      var description = "heavy rain & drizzle" || json.weather[0].description;
+      var description = json.weather[0].description;
       console.log(temperature + " Conditions " + conditions + " " + description + " " + json.name);
            
       description = description.replace(" intensity ", " ").replace(" and ", " & ").replace(" with ", " w/ ").replace("shower ", "");
