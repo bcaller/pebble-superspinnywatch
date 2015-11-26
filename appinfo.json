@@ -1,7 +1,11 @@
 {
-    "appKeys": {},
+    "appKeys": {
+        "KEY_CONDITIONS": 24,
+        "KEY_LOC": 18,
+        "KEY_TEMPERATURE": 23
+    },
     "capabilities": [
-        ""
+        "location"
     ],
     "companyName": "BenCaller",
     "longName": "SuperSpinnyWatch",

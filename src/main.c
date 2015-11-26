@@ -5,13 +5,20 @@
 #define MIN_RIBBONS 5
 #define MAX_EXTRA_RIBBONS 7
 
+#define KEY_TEMPERATURE 23
+#define KEY_CONDITIONS 24
+#define KEY_LOC 18
+
 static Window *main_window;
 static Layer *time_layer;
 static Layer *spinny_layer;
 static Layer *date_layer;
+static Layer *weather_layer;
 static GFont *f;
 static GFont font_main_big;
 static GFont font_date_small;
+static GFont font_temp_vsmall;
+static char weather_layer_buffer[32];
 
 int32_t offset = 0;
 int anim_ticks = TICKS; //Start with spinning animation
@@ -78,9 +85,10 @@ static void time_draw(Layer *layer, GContext *ctx) {
     surround_text(ctx, time_buffer, bounds.size.w, font_main_big, y, 50);
     //Drop Shadow
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 2, y+2);
-    //draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 3, y+3);
+    draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 3, y+3);
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 4, y+4);
-    //draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 5, y+5);
+    draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 5, y+5);
+    draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 6, y+6);
     //Text
     graphics_context_set_text_color(ctx, invertIfDisconnected(charging ? GColorGreen : GColorWhite));
     graphics_draw_text(ctx, time_buffer, font_main_big, GRect(0, y, bounds.size.w, 50), GTextOverflowModeFill, GTextAlignmentCenter,
@@ -99,6 +107,16 @@ static void date_draw(Layer *layer, GContext *ctx) {
     surround_text(ctx, date_buffer, bounds.size.w, font_date_small, 0, 30);
        graphics_context_set_text_color(ctx, invertIfDisconnected(GColorWhite));
     graphics_draw_text(ctx, date_buffer, font_date_small, GRect(0, 0, bounds.size.w, 30), GTextOverflowModeFill, GTextAlignmentCenter,
+                       NULL);
+}
+
+static void weather_draw(Layer *layer, GContext *ctx) {
+   APP_LOG(APP_LOG_LEVEL_DEBUG, "Weather draw");
+   GRect bounds = layer_get_bounds(layer);
+   graphics_context_set_text_color(ctx, invertIfDisconnected(bg));
+   surround_text(ctx, weather_layer_buffer, bounds.size.w, font_temp_vsmall, 0, 30);
+   graphics_context_set_text_color(ctx, invertIfDisconnected(GColorWhite));
+   graphics_draw_text(ctx, weather_layer_buffer, font_temp_vsmall, GRect(0, 0, bounds.size.w, 30), GTextOverflowModeFill, GTextAlignmentCenter,
                        NULL);
 }
 
@@ -146,6 +164,17 @@ static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
         anim_ticks = tick_time->tm_min ? TICKS / 3 : TICKS; // Massive hour
         app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
     }
+   if(tick_time->tm_min % 30 == 0) {
+     // Begin dictionary
+     DictionaryIterator *iter;
+     app_message_outbox_begin(&iter);
+   
+     // Add a key-value pair
+     dict_write_uint8(iter, 0, 0);
+   
+     // Send the message!
+     app_message_outbox_send();
+   }
 }
 
 static void tap_handler(AccelAxisType axis, int32_t direction) {
@@ -176,6 +205,7 @@ static void main_window_load(Window *window) {
     font_main_big = fonts_get_system_font(FONT_KEY_ROBOTO_BOLD_SUBSET_49);
    //font_main_big = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_COOL_46)); 
    font_date_small = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+   font_temp_vsmall = fonts_get_system_font(FONT_KEY_GOTHIC_14);
     // Get information about the Window
     Layer *window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
@@ -188,11 +218,14 @@ static void main_window_load(Window *window) {
     layer_set_update_proc(spinny_layer, spinny_layer_draw);
     layer_add_child(window_layer, spinny_layer);
     date_layer = layer_create(GRect(0, bounds.size.h-35, bounds.size.w, 35));
+   weather_layer = layer_create(GRect(0, 0, bounds.size.w, 35));
 
     layer_set_update_proc(time_layer, time_draw);
     layer_set_update_proc(date_layer, date_draw);
-    layer_add_child(window_layer, time_layer);
+    layer_set_update_proc(weather_layer, weather_draw);
     layer_add_child(window_layer, date_layer);
+    layer_add_child(window_layer, weather_layer);
+    layer_add_child(window_layer, time_layer);
 
     accel_tap_service_subscribe(tap_handler);
    battery_state_service_subscribe(battery_callback);
@@ -220,13 +253,49 @@ static void main_window_unload(Window *w) {
     layer_destroy(time_layer);
     layer_destroy(spinny_layer);
     layer_destroy(date_layer);
+   layer_destroy(weather_layer);
     gpath_destroy(ribbon_path);
 }
 
 
 static void deinit() {
-    // Destroy Window
+    app_message_deregister_callbacks();
     window_destroy(main_window);
+}
+
+static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
+   // Store incoming information
+  static char conditions_buffer[32];
+   static char temp_buffer[32];
+
+  // Read tuples for data
+  Tuple *temp_tuple = dict_find(iterator, KEY_TEMPERATURE);
+  Tuple *conditions_tuple = dict_find(iterator, KEY_CONDITIONS);
+   //Tuple *loc_tuple = dict_find(iterator, KEY_LOC);
+
+  // If all data is available, use it
+  if(temp_tuple && conditions_tuple) {
+    snprintf(temp_buffer, sizeof(temp_buffer), "%d°C", (int)temp_tuple->value->int32);
+    snprintf(conditions_buffer, sizeof(conditions_buffer), "%s", conditions_tuple->value->cstring);
+     //snprintf(loc_buffer, sizeof(loc_buffer), "%s", loc_tuple->value->cstring);
+
+    // Assemble full string and display
+    snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s %s", temp_buffer, conditions_buffer);
+     APP_LOG(APP_LOG_LEVEL_DEBUG, weather_layer_buffer);
+     layer_mark_dirty(weather_layer);
+  }
+}
+
+static void inbox_dropped_callback(AppMessageResult reason, void *context) {
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Message dropped!");
+}
+
+static void outbox_failed_callback(DictionaryIterator *iterator, AppMessageResult reason, void *context) {
+  APP_LOG(APP_LOG_LEVEL_ERROR, "Outbox send failed!");
+}
+
+static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
+  APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
 }
 
 static void init() {
@@ -248,6 +317,14 @@ static void init() {
    
    time_t temp = time(NULL);
    tick_minute_handler(localtime(&temp), MINUTE_UNIT);
+   
+   // Register callbacks
+   app_message_register_inbox_received(inbox_received_callback);
+   app_message_register_inbox_dropped(inbox_dropped_callback);
+   app_message_register_outbox_failed(outbox_failed_callback);
+   app_message_register_outbox_sent(outbox_sent_callback);
+   // Open AppMessage
+   app_message_open(app_message_inbox_size_maximum(), app_message_outbox_size_maximum());
 }
 
 int main(void) {
