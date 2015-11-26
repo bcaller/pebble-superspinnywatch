@@ -12,6 +12,7 @@ int32_t offset = 0;
 int anim_ticks = 0;
 int num_ribbons = 22;
 bool bluetooth = true;
+bool charging = false;
 
 GColor bg;
 
@@ -60,7 +61,7 @@ static void time_draw(Layer *layer, GContext *ctx) {
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 3, y+3);
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 4, y+4);
     //Text
-    graphics_context_set_text_color(ctx, GColorWhite);
+    graphics_context_set_text_color(ctx, charging ? GColorGreen : GColorWhite);
     graphics_draw_text(ctx, time_buffer, font_main_big, GRect(0, y, bounds.size.w, 50), GTextOverflowModeFill, GTextAlignmentCenter,
                        NULL);
 }
@@ -83,7 +84,7 @@ static void date_draw(Layer *layer, GContext *ctx) {
 static void spinny_layer_draw(Layer *layer, GContext *ctx) {
     GRect bounds = layer_get_bounds(layer);
 
-    graphics_context_set_fill_color(ctx, bluetooth ? bg : GColorBlack);
+    graphics_context_set_fill_color(ctx, bluetooth ? bg : GColorClear);
     graphics_fill_rect(ctx, bounds, 0, GCornersAll);
 
 
@@ -100,11 +101,11 @@ static void spinny_layer_draw(Layer *layer, GContext *ctx) {
     //Draw each ribbon
     for (int i = 0; i < num_ribbons; i++) {
         graphics_context_set_fill_color(ctx, colours[i % 4]);
-        gpath_rotate_to(ribbon_path, TRIG_MAX_ANGLE / num_ribbons * i + TRIG_MAX_ANGLE / 360 * offset);
+        gpath_rotate_to(ribbon_path, TRIG_MAX_ANGLE / num_ribbons * i - TRIG_MAX_ANGLE / 360 * offset);
         gpath_draw_filled(ctx, ribbon_path);
     }
     graphics_context_set_fill_color(ctx, GColorWhite);
-    graphics_fill_circle(ctx, GPoint(bounds.size.w / 2, bounds.size.h / 2), 2);
+    graphics_fill_circle(ctx, GPoint(bounds.size.w / 2, bounds.size.h / 2), 3);
 }
 
 static void animation_timer_callback(void *d) {
@@ -121,7 +122,7 @@ static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
        layer_mark_dirty(date_layer);
 
     if (!anim_ticks) {
-        anim_ticks = 20;
+        anim_ticks = tick_time->tm_min == 0 ? 30 : 10;
         app_timer_register(200, animation_timer_callback, NULL);
     }
 }
@@ -139,6 +140,7 @@ static void battery_callback(BatteryChargeState state) {
    if((state.charge_percent * 14) % 100) {
       num_ribbons++;
    }
+   charging = state.is_charging;
    layer_mark_dirty(spinny_layer);
 }
 
@@ -149,7 +151,8 @@ static void bluetooth_callback(bool connected) {
 
 static void main_window_load(Window *window) {
     font_main_big = fonts_get_system_font(FONT_KEY_ROBOTO_BOLD_SUBSET_49);
-    font_date_small = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
+   //font_main_big = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_COOL_46)); 
+   font_date_small = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
     // Get information about the Window
     Layer *window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
