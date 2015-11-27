@@ -75,7 +75,7 @@ static void time_draw(Layer *layer, GContext *ctx) {
     // Write the current hours and minutes into a buffer
     static char time_buffer[8];
     strftime(time_buffer, sizeof(time_buffer), clock_is_24h_style() ?
-                                               "%H:%M" : "%I:%M", tick_time);
+                                               "%H:%M" : "%l:%M", tick_time);
 
     GRect bounds = layer_get_bounds(layer);
 
@@ -128,8 +128,6 @@ static void spinny_layer_draw(Layer *layer, GContext *ctx) {
 
     graphics_context_set_fill_color(ctx, invertIfDisconnected(bg));
     graphics_fill_rect(ctx, bounds, 0, GCornersAll);
-
-    ribbon_path = gpath_create(&RIBBON_PATHINFO);
 
     GPoint center = GPoint(bounds.size.w / 2, bounds.size.h / 2);
     gpath_move_to(ribbon_path, center);
@@ -215,6 +213,7 @@ static void main_window_load(Window *window) {
     layer_set_update_proc(time_layer, time_draw);
 
     spinny_layer = layer_create(bounds);
+    ribbon_path = gpath_create(&RIBBON_PATHINFO);
     layer_set_update_proc(spinny_layer, spinny_layer_draw);
 
     date_layer = layer_create(GRect(0, bounds.size.h - 35, bounds.size.w, 35));
