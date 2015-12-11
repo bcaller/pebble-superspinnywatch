@@ -52,8 +52,17 @@ static GColor invert(GColor c) {
     };
 }
 
+static GColor desaturate(GColor c) {
+    return (GColor8) {
+            .a = c.a,
+            .r = (c.r + c.g + c.b) / 3,
+            .g = (c.r + c.g + c.b) / 3,
+            .b = (c.r + c.g + c.b) / 3
+    };
+}
+
 static GColor invertIfDisconnected(GColor c) {
-    return bluetooth ? c : invert(c);
+    return bluetooth ? c : desaturate(c);
 }
 
 void surround_text(GContext *ctx, const char *s_buffer, uint8_t w, FontInfo *fo, int16_t y, uint8_t h) {
@@ -150,16 +159,21 @@ static void animation_timer_callback(void *d) {
 }
 
 static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Minute tick");
     layer_mark_dirty(time_layer);
-    layer_mark_dirty(date_layer);
+    if(!tick_time->tm_hour)
+        layer_mark_dirty(date_layer);
+    
+    bool batteryOK = num_ribbons > MIN_RIBBONS + MAX_EXTRA_RIBBONS / 2;
+    bool newHour = tick_time->tm_min == 0;
 
     if (!anim_ticks) {
         anim_ticks = tick_time->tm_min ? TICKS / 4 : TICKS * 3 / 4; // Massive hour
-        app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
+        if(newHour || batteryOK) //Don't do every minute if battery is low
+            app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
     }
     //Update weather
-    if (tick_time->tm_min % 30 == 0) {
+    //Hourly if battery low or early morning
+    if (bluetooth && tick_time->tm_min % 30 == 0 && (batteryOK || newHour) && (newHour || !(tick_time->tm_hour > 1 && tick_time->tm_hour < 5))) {
         // Begin dictionary
         DictionaryIterator *iter;
         app_message_outbox_begin(&iter);
