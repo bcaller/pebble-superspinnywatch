@@ -2,6 +2,8 @@
 
 var myAPIKey = 'c0a93048736d6dbdd3194b0086abc59a';
 
+var UPDATE_INTERVAL = 60 * 60 * 1000;
+
 var xhrRequest = function (url, type, callback) {
   var xhr = new XMLHttpRequest();
   xhr.onload = function () {
@@ -32,22 +34,11 @@ function locationSuccess(pos) {
       console.log(temperature + " Conditions " + conditions + " " + description + " " + json.name);
            
       description = description.replace(" intensity ", " ").replace(" and ", " & ").replace(" with ", " w/ ").replace("shower ", "");
-      
-      // Assemble dictionary using our keys
-      var dictionary = {
-        "KEY_TEMPERATURE": temperature,
-        "KEY_CONDITIONS": description.length > 20 ? conditions : description
-      };
-          console.log(navigator.battery, navigator.getBattery, navigator);
-      // Send to Pebble
-      Pebble.sendAppMessage(dictionary,
-        function(e) {
-          console.log("Weather info sent to Pebble successfully!");
-        },
-        function(e) {
-          console.log("Error sending weather info to Pebble!", e);
-        }
-      );
+      localStorage.setItem('KEY_TEMPERATURE', temperature);
+    localStorage.setItem('KEY_CONDITIONS', description.length > 20 ? conditions : description);
+           localStorage.setItem('lut', Date.now());
+           reportWeather();
+     
        } catch(e) {
           console.log("Error parsing weather data", e);
        }
@@ -63,8 +54,26 @@ function getWeather() {
   navigator.geolocation.getCurrentPosition(
     locationSuccess,
     locationError,
-    {timeout: 15000, maximumAge: 60000}
+    {timeout: 30000, maximumAge: 20 * 60 * 1000}
   );
+    setTimeout(getWeather, UPDATE_INTERVAL);
+}
+
+function reportWeather() {
+      // Send to Pebble
+    var dict = {
+        KEY_TEMPERATURE: parseInt(localStorage.getItem('KEY_TEMPERATURE')),
+        KEY_CONDITIONS: localStorage.getItem('KEY_CONDITIONS')
+      };
+    console.log(JSON.stringify(dict));
+      Pebble.sendAppMessage(dict,
+        function(e) {
+          console.log("Weather info sent to Pebble successfully!", dict);
+        },
+        function(e) {
+          console.log("Error sending weather info to Pebble!", e);
+        }
+      );
 }
 
 // Listen for when the watchface is opened
@@ -73,14 +82,17 @@ Pebble.addEventListener('ready',
     console.log("PebbleKit JS ready!");
 
     // Get the initial weather
-    getWeather();
+    var lastUpdateTime = localStorage.getItem('lut');
+    var currentTime = Date.now();
+    if(!lastUpdateTime || currentTime < lastUpdateTime) {
+        getWeather();
+    } else if(currentTime - lastUpdateTime > UPDATE_INTERVAL * 3 / 4) {
+        reportWeather();
+        getWeather();
+    } else {
+        console.log("reporting old weather conditions (cheeky)");
+        reportWeather();
+        setTimeout(getWeather, UPDATE_INTERVAL - (currentTime - lastUpdateTime));
+    }
   }
-);
-
-// Listen for when an AppMessage is received
-Pebble.addEventListener('appmessage',
-  function(e) {
-    console.log("AppMessage received!", e);
-    getWeather();
-  }                     
 );

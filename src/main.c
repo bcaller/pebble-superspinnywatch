@@ -77,7 +77,7 @@ void surround_text(GContext *ctx, const char *s_buffer, uint8_t w, FontInfo *fo,
 }
 
 static void time_draw(Layer *layer, GContext *ctx) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Time draw");
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "Time draw");
     time_t temp = time(NULL);
     struct tm *tick_time = localtime(&temp);
 
@@ -106,7 +106,7 @@ static void time_draw(Layer *layer, GContext *ctx) {
 }
 
 static void date_draw(Layer *layer, GContext *ctx) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Date draw");
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "Date draw");
     time_t temp = time(NULL);
     struct tm *tick_time = localtime(&temp);
     // Copy date into buffer from tm structure
@@ -122,7 +122,7 @@ static void date_draw(Layer *layer, GContext *ctx) {
 }
 
 static void weather_draw(Layer *layer, GContext *ctx) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Weather draw");
+    //APP_LOG(APP_LOG_LEVEL_DEBUG, "Weather draw");
     GRect bounds = layer_get_bounds(layer);
     graphics_context_set_text_color(ctx, invertIfDisconnected(bg));
     surround_text(ctx, weather_layer_buffer, bounds.size.w, font_temp_vsmall, 0, 30);
@@ -171,19 +171,6 @@ static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
         if(newHour || batteryOK) //Don't do every minute if battery is low
             app_timer_register(FRAME_DURATION, animation_timer_callback, NULL);
     }
-    //Update weather
-    //Hourly if battery low or early morning
-    if (bluetooth && tick_time->tm_min % 30 == 0 && (batteryOK || newHour) && (newHour || !(tick_time->tm_hour > 1 && tick_time->tm_hour < 5))) {
-        // Begin dictionary
-        DictionaryIterator *iter;
-        app_message_outbox_begin(&iter);
-
-        // Add a key-value pair
-        dict_write_uint8(iter, 0, 0);
-
-        // Send the message!
-        app_message_outbox_send();
-    }
 }
 
 static void tap_handler(AccelAxisType axis, int32_t direction) {
@@ -205,7 +192,11 @@ static void battery_callback(BatteryChargeState state) {
 }
 
 static void bluetooth_callback(bool connected) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "bluetooth");
+    APP_LOG(APP_LOG_LEVEL_DEBUG, connected ? "bluetooth" : "no bluetooth");
+    if(bluetooth && !connected) {
+        // Notify that phone has disconnected
+        vibes_short_pulse();
+    }
     bluetooth = connected;
     layer_mark_dirty(spinny_layer);
 }
