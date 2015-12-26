@@ -1,4 +1,5 @@
 #include <pebble.h>
+#include "OutlinedTextLayer.h"
 
 #define TICKS 40
 #define FRAME_DURATION 175
@@ -12,8 +13,8 @@
 static Window *main_window;
 static Layer *time_layer;
 static Layer *spinny_layer;
-static Layer *date_layer;
-static Layer *weather_layer;
+static OutlinedTextLayer *date_layer;
+static OutlinedTextLayer *weather_layer;
 static GFont font_main_big;
 static GFont font_date_small;
 static GFont font_temp_vsmall;
@@ -25,6 +26,7 @@ uint8_t anim_ticks = TICKS; //Start with spinning animation
 uint8_t num_ribbons = 22;
 bool bluetooth = true;
 bool charging = false;
+static char date_buffer[12];
 
 GColor bg;
 
@@ -105,7 +107,7 @@ static void time_draw(Layer *layer, GContext *ctx) {
                        NULL);
 }
 
-static void date_draw(Layer *layer, GContext *ctx) {
+/*static void date_draw(Layer *layer, GContext *ctx) {
     //APP_LOG(APP_LOG_LEVEL_DEBUG, "Date draw");
     time_t temp = time(NULL);
     struct tm *tick_time = localtime(&temp);
@@ -119,18 +121,7 @@ static void date_draw(Layer *layer, GContext *ctx) {
     graphics_draw_text(ctx, date_buffer, font_date_small, GRect(0, 0, bounds.size.w, 30), GTextOverflowModeFill,
                        GTextAlignmentCenter,
                        NULL);
-}
-
-static void weather_draw(Layer *layer, GContext *ctx) {
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "Weather draw");
-    GRect bounds = layer_get_bounds(layer);
-    graphics_context_set_text_color(ctx, invertIfDisconnected(bg));
-    surround_text(ctx, weather_layer_buffer, bounds.size.w, font_temp_vsmall, 0, 30);
-    graphics_context_set_text_color(ctx, invertIfDisconnected(GColorWhite));
-    graphics_draw_text(ctx, weather_layer_buffer, font_temp_vsmall, GRect(0, 0, bounds.size.w, 30),
-                       GTextOverflowModeFill, GTextAlignmentCenter,
-                       NULL);
-}
+}*/
 
 static void spinny_layer_draw(Layer *layer, GContext *ctx) {
     GRect bounds = layer_get_bounds(layer);
@@ -160,11 +151,14 @@ static void animation_timer_callback(void *d) {
 
 static void tick_minute_handler(struct tm *tick_time, TimeUnits units_changed) {
     layer_mark_dirty(time_layer);
-    if(!tick_time->tm_hour)
-        layer_mark_dirty(date_layer);
+    if(units_changed & DAY_UNIT) {
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "New day");
+        strftime(date_buffer, sizeof(date_buffer), "%a %d %b", tick_time);
+        outlined_text_layer_set_text(date_layer, date_buffer);
+    }
     
     bool batteryOK = num_ribbons > MIN_RIBBONS + MAX_EXTRA_RIBBONS / 2;
-    bool newHour = tick_time->tm_min == 0;
+    bool newHour = units_changed & HOUR_UNIT;
 
     if (!anim_ticks) {
         anim_ticks = tick_time->tm_min ? TICKS / 4 : TICKS * 3 / 4; // Massive hour
@@ -221,15 +215,17 @@ static void main_window_load(Window *window) {
     ribbon_path = gpath_create(&RIBBON_PATHINFO);
     layer_set_update_proc(spinny_layer, spinny_layer_draw);
 
-    date_layer = layer_create(GRect(0, bounds.size.h - 35, bounds.size.w, 35));
-    layer_set_update_proc(date_layer, date_draw);
+    date_layer = outlined_text_layer_create(GRect(0, bounds.size.h - 35, bounds.size.w, 35));
+    outlined_text_layer_set_font(date_layer, font_date_small);
+    outlined_text_layer_set_colors(date_layer, invertIfDisconnected(bg), invertIfDisconnected(GColorWhite));
 
-    weather_layer = layer_create(GRect(0, 0, bounds.size.w, 35));
-    layer_set_update_proc(weather_layer, weather_draw);
+    weather_layer = outlined_text_layer_create(GRect(0, 0, bounds.size.w, 35));
+    outlined_text_layer_set_font(weather_layer, font_temp_vsmall);
+    outlined_text_layer_set_colors(weather_layer, invertIfDisconnected(bg), invertIfDisconnected(GColorWhite));
 
     layer_add_child(window_layer, spinny_layer);
-    layer_add_child(window_layer, date_layer);
-    layer_add_child(window_layer, weather_layer);
+    layer_add_child(window_layer, outlined_text_layer_get_layer(date_layer));
+    layer_add_child(window_layer, outlined_text_layer_get_layer(weather_layer));
     layer_add_child(window_layer, time_layer);
 
     accel_tap_service_subscribe(tap_handler);
@@ -250,14 +246,18 @@ static void main_window_load(Window *window) {
 #elif PBL_SDK_3
     bluetooth_callback(connection_service_peek_pebble_app_connection());
 #endif
+    
+    //kick off
+    time_t temp = time(NULL);
+    tick_minute_handler(localtime(&temp), SECOND_UNIT | MINUTE_UNIT | HOUR_UNIT | DAY_UNIT);
     animation_timer_callback(NULL);
 }
 
 static void main_window_unload(Window *w) {
     layer_destroy(time_layer);
     layer_destroy(spinny_layer);
-    layer_destroy(date_layer);
-    layer_destroy(weather_layer);
+    outlined_text_layer_destroy(date_layer);
+    outlined_text_layer_destroy(weather_layer);
     gpath_destroy(ribbon_path);
     connection_service_unsubscribe();
     battery_state_service_unsubscribe();
@@ -290,7 +290,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         // Assemble full string and display
         snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s %s", temp_buffer, conditions_buffer);
         APP_LOG(APP_LOG_LEVEL_DEBUG, weather_layer_buffer);
-        layer_mark_dirty(weather_layer);
+        outlined_text_layer_set_text(weather_layer, weather_layer_buffer);
     }
 }
 
@@ -322,9 +322,6 @@ static void init() {
 
     // Register with TickTimerService
     tick_timer_service_subscribe(MINUTE_UNIT, tick_minute_handler);
-
-    time_t temp = time(NULL);
-    tick_minute_handler(localtime(&temp), MINUTE_UNIT);
 
     // Register callbacks
     app_message_register_inbox_received(inbox_received_callback);
