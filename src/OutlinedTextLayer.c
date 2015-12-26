@@ -14,22 +14,23 @@ OutlinedTextData* outlined_text_layer_get_outline_data(OutlinedTextLayer* layer)
     return layer_get_data((Layer*)layer);
 }
 
-void draw_outline(GPoint origin, GSize size, GContext *ctx, OutlinedTextData *data) {
-    graphics_draw_text(ctx, data->text, data->font, (GRect){.origin=origin,.size=size}, data->overflow, data->alignment, NULL);
+void draw_outline(int dx, int dy, GRect bounds, GContext *ctx, OutlinedTextData *data) {
+    graphics_draw_text(ctx, data->text, data->font, 
+                       (GRect){.origin={bounds.origin.x+dx,bounds.origin.y+dy},.size=bounds.size},
+                       data->overflow, data->alignment, NULL);
 }
 
-#define IMPRESSION(xx,yy) draw_outline((GPoint){bounds.origin.x+xx,bounds.origin.y+yy}, bounds.size, ctx, data);draw_outline((GPoint){bounds.origin.x-xx,bounds.origin.y-yy}, bounds.size, ctx, data)
+#define IMPRESSION(xx,yy) draw_outline(xx, yy, bounds, ctx, data)
 void draw(Layer *layer, GContext *ctx) {
     OutlinedTextData* data = outlined_text_layer_get_outline_data((OutlinedTextLayer*)layer);
     GRect bounds = layer_get_bounds((Layer*)layer);
     graphics_context_set_text_color(ctx, data->bg);
-    IMPRESSION(2,0);
-    IMPRESSION(0,2);
-    IMPRESSION(1,1);
-    IMPRESSION(1,-1);
+    IMPRESSION(2,0);IMPRESSION(-2,0);
+    IMPRESSION(0,2);IMPRESSION(0,-2);
+    IMPRESSION(1,1);IMPRESSION(-1,-1);
+    IMPRESSION(1,-1);IMPRESSION(-1,1);
     graphics_context_set_text_color(ctx, data->fg);
     IMPRESSION(0,0);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "%s", data->text);
 }
 
 OutlinedTextLayer *outlined_text_layer_create(GRect frame) {

@@ -1,5 +1,6 @@
 //Stolen from Pebble tutorial
 
+//var myAPIKey = 'KEY ********************';
 var myAPIKey = 'c0a93048736d6dbdd3194b0086abc59a';
 
 var UPDATE_INTERVAL = 60 * 60 * 1000;
