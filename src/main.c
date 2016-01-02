@@ -10,6 +10,27 @@
 #define KEY_CONDITIONS 24
 #define KEY_LOC 18
 
+#define KEY_BG 100
+#define KEY_C1 110
+#define KEY_C2 120
+#define KEY_C3 130
+#define KEY_C4 140
+#define KEY_FG 150
+#define DEF_BG GColorFromHEX(0x000071)
+#define DEF_C1 GColorYellow
+#define DEF_C2 GColorFromHEX(0xff7c11)
+#define DEF_C3 GColorBrilliantRose
+#define DEF_C4 GColorCyan
+#define DEF_FG GColorWhite
+
+#define KEY_DISCO_VIBRATE 201
+bool disco_vibrate;
+#define KEY_DATE 202
+#define KEY_WEATHER 203
+bool storage_ok = false;
+#define KEY_STORAGE_OK 444
+
+
 static Window *main_window;
 static Layer *time_layer;
 static Layer *spinny_layer;
@@ -28,7 +49,8 @@ bool bluetooth = true;
 bool charging = false;
 static char date_buffer[12];
 
-GColor bg;
+static GColor bg;
+static GColor fg;
 
 static const GPathInfo RIBBON_PATHINFO = {
         6,
@@ -101,27 +123,11 @@ static void time_draw(Layer *layer, GContext *ctx) {
     //draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 5, y+5);
     draw_bordered(ctx, time_buffer, bounds.size.w, 50, font_main_big, 6, y + 6);
     //Text
-    graphics_context_set_text_color(ctx, invertIfDisconnected(charging ? GColorGreen : GColorWhite));
+    graphics_context_set_text_color(ctx, invertIfDisconnected(charging ? GColorGreen : fg));
     graphics_draw_text(ctx, time_buffer, font_main_big, GRect(0, y, bounds.size.w, 50), GTextOverflowModeFill,
                        GTextAlignmentCenter,
                        NULL);
 }
-
-/*static void date_draw(Layer *layer, GContext *ctx) {
-    //APP_LOG(APP_LOG_LEVEL_DEBUG, "Date draw");
-    time_t temp = time(NULL);
-    struct tm *tick_time = localtime(&temp);
-    // Copy date into buffer from tm structure
-    static char date_buffer[16];
-    strftime(date_buffer, sizeof(date_buffer), "%a %d %b", tick_time);
-    GRect bounds = layer_get_bounds(layer);
-    graphics_context_set_text_color(ctx, invertIfDisconnected(bg));
-    surround_text(ctx, date_buffer, bounds.size.w, font_date_small, 0, 30);
-    graphics_context_set_text_color(ctx, invertIfDisconnected(GColorWhite));
-    graphics_draw_text(ctx, date_buffer, font_date_small, GRect(0, 0, bounds.size.w, 30), GTextOverflowModeFill,
-                       GTextAlignmentCenter,
-                       NULL);
-}*/
 
 static void spinny_layer_draw(Layer *layer, GContext *ctx) {
     GRect bounds = layer_get_bounds(layer);
@@ -187,12 +193,20 @@ static void battery_callback(BatteryChargeState state) {
 
 static void bluetooth_callback(bool connected) {
     APP_LOG(APP_LOG_LEVEL_DEBUG, connected ? "bluetooth" : "no bluetooth");
-    if(bluetooth && !connected) {
+    if(bluetooth && !connected && disco_vibrate) {
         // Notify that phone has disconnected
         vibes_short_pulse();
     }
     bluetooth = connected;
+    outlined_text_layer_set_colors(date_layer, invertIfDisconnected(bg), invertIfDisconnected(fg));
+    outlined_text_layer_set_colors(weather_layer, invertIfDisconnected(bg), invertIfDisconnected(fg));
     layer_mark_dirty(spinny_layer);
+}
+
+static bool persist_read_bool_def_true(int key) {
+    if(!storage_ok || !persist_exists(key))
+        return true;
+    return persist_read_bool(key);
 }
 
 static void main_window_load(Window *window) {
@@ -200,10 +214,6 @@ static void main_window_load(Window *window) {
     //font_main_big = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_COOL_46));
     font_date_small = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
     font_temp_vsmall = fonts_get_system_font(FONT_KEY_GOTHIC_14);
-    colours[0] = GColorYellow;
-    colours[1] = GColorFromHEX(0xff7c11);
-    colours[2] = GColorBrilliantRose;
-    colours[3] = GColorCyan;
     // Get information about the Window
     Layer *window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
@@ -217,11 +227,13 @@ static void main_window_load(Window *window) {
 
     date_layer = outlined_text_layer_create(GRect(0, bounds.size.h - 35, bounds.size.w, 35));
     outlined_text_layer_set_font(date_layer, font_date_small);
-    outlined_text_layer_set_colors(date_layer, invertIfDisconnected(bg), invertIfDisconnected(GColorWhite));
+    outlined_text_layer_set_colors(date_layer, invertIfDisconnected(bg), invertIfDisconnected(fg));
+    layer_set_hidden(outlined_text_layer_get_layer(date_layer), !persist_read_bool_def_true(KEY_DATE));
 
     weather_layer = outlined_text_layer_create(GRect(0, 0, bounds.size.w, 35));
     outlined_text_layer_set_font(weather_layer, font_temp_vsmall);
-    outlined_text_layer_set_colors(weather_layer, invertIfDisconnected(bg), invertIfDisconnected(GColorWhite));
+    outlined_text_layer_set_colors(weather_layer, invertIfDisconnected(bg), invertIfDisconnected(fg));
+    layer_set_hidden(outlined_text_layer_get_layer(weather_layer), !persist_read_bool_def_true(KEY_WEATHER));
 
     layer_add_child(window_layer, spinny_layer);
     layer_add_child(window_layer, outlined_text_layer_get_layer(date_layer));
@@ -271,6 +283,20 @@ static void deinit() {
     window_destroy(main_window);
 }
 
+static GColor set_colour(DictionaryIterator *iter, int key) {
+    Tuple *colour = dict_find(iter, key);
+    GColor result = GColorWhite;
+    if(colour) {
+        int colour_value = colour->value->int32;
+        result = GColorFromHEX(colour_value);
+        persist_write_int(key, colour_value);
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Setting colour to %X", colour_value);
+    } else {
+        APP_LOG(APP_LOG_LEVEL_ERROR, "Problem with colour");
+    }
+    return result;
+}
+
 static void inbox_received_callback(DictionaryIterator *iterator, void *context) {
     // Store incoming information
     static char conditions_buffer[32];
@@ -291,6 +317,27 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         snprintf(weather_layer_buffer, sizeof(weather_layer_buffer), "%s %s", temp_buffer, conditions_buffer);
         APP_LOG(APP_LOG_LEVEL_DEBUG, weather_layer_buffer);
         outlined_text_layer_set_text(weather_layer, weather_layer_buffer);
+    } else if(dict_find(iterator, KEY_BG)) {
+        //perhaps settings
+        storage_ok = true;
+        persist_write_int(KEY_STORAGE_OK, KEY_STORAGE_OK);
+        bg = set_colour(iterator, KEY_BG);
+        colours[0] = set_colour(iterator, KEY_C1);
+        colours[1] = set_colour(iterator, KEY_C2);
+        colours[2] = set_colour(iterator, KEY_C3);
+        colours[3] = set_colour(iterator, KEY_C4);
+        fg = set_colour(iterator, KEY_FG);
+        outlined_text_layer_set_colors(date_layer, invertIfDisconnected(bg), invertIfDisconnected(fg));
+        outlined_text_layer_set_colors(weather_layer, invertIfDisconnected(bg), invertIfDisconnected(fg));
+        disco_vibrate = dict_find(iterator, KEY_DISCO_VIBRATE)->value->int8 == 1;
+        persist_write_bool(KEY_DISCO_VIBRATE, disco_vibrate);
+        bool show_weather = dict_find(iterator, KEY_WEATHER)->value->int8 == 1;
+        layer_set_hidden(outlined_text_layer_get_layer(weather_layer), !show_weather);
+        persist_write_bool(KEY_DISCO_VIBRATE, show_weather);
+        bool show_date = dict_find(iterator, KEY_DATE)->value->int8 == 1;
+        layer_set_hidden(outlined_text_layer_get_layer(date_layer), !show_date);
+        persist_write_bool(KEY_DATE, show_date);
+        layer_mark_dirty(spinny_layer);
     }
 }
 
@@ -306,8 +353,28 @@ static void outbox_sent_callback(DictionaryIterator *iterator, void *context) {
     APP_LOG(APP_LOG_LEVEL_INFO, "Outbox send success!");
 }
 
+static GColor persist_read_colour(int key, GColor def) {
+    int colour_value = persist_read_int(key);
+    if(!storage_ok || !persist_exists(key) || colour_value < 0 || colour_value > 16777215)
+        return def;
+    return GColorFromHEX(colour_value);
+}
+
 static void init() {
-    bg = GColorFromHEX(0x000071);
+    if(persist_exists(KEY_STORAGE_OK) && persist_read_int(KEY_STORAGE_OK) == KEY_STORAGE_OK) {
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "Reading from storage");
+        storage_ok = true; //else storage empty or corrupt
+    } else {
+        APP_LOG(APP_LOG_LEVEL_DEBUG, "No stored settings");
+    }
+    bg = persist_read_colour(KEY_BG, DEF_BG);
+    colours[0] = persist_read_colour(KEY_C1, DEF_C1);
+    colours[1] = persist_read_colour(KEY_C2, DEF_C2);
+    colours[2] = persist_read_colour(KEY_C3, DEF_C3);
+    colours[3] = persist_read_colour(KEY_C4, DEF_C4);
+    fg = persist_read_colour(KEY_FG, DEF_FG);
+    
+    disco_vibrate = persist_read_bool_def_true(KEY_DISCO_VIBRATE);
     // Create main Window element and assign to pointer
     main_window = window_create();
 
@@ -329,7 +396,7 @@ static void init() {
     app_message_register_outbox_failed(outbox_failed_callback);
     app_message_register_outbox_sent(outbox_sent_callback);
     // Open AppMessage
-    app_message_open(128, APP_MESSAGE_OUTBOX_SIZE_MINIMUM);
+    app_message_open(2048, APP_MESSAGE_OUTBOX_SIZE_MINIMUM);
 }
 
 int main(void) {

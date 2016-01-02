@@ -1,10 +1,20 @@
 {
     "appKeys": {
+        "BG": 100,
+        "C1": 110,
+        "C2": 120,
+        "C3": 130,
+        "C4": 140,
+        "DATE": 202,
+        "DISCO_VIBRATE": 201,
+        "FG": 150,
         "KEY_CONDITIONS": 24,
-        "KEY_TEMPERATURE": 23
+        "KEY_TEMPERATURE": 23,
+        "WEATHER": 203
     },
     "capabilities": [
-        "location"
+        "location",
+        "configurable"
     ],
     "companyName": "BenCaller",
     "longName": "SuperSpinnyWatch",

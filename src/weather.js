@@ -4,6 +4,7 @@
 var myAPIKey = 'c0a93048736d6dbdd3194b0086abc59a';
 
 var UPDATE_INTERVAL = 60 * 60 * 1000;
+var doWeather = localStorage.getItem('WEATHER');
 
 var xhrRequest = function (url, type, callback) {
   var xhr = new XMLHttpRequest();
@@ -52,6 +53,7 @@ function locationError(err) {
 }
 
 function getWeather() {
+    if(!doWeather) return;
   navigator.geolocation.getCurrentPosition(
     locationSuccess,
     locationError,
@@ -61,6 +63,7 @@ function getWeather() {
 }
 
 function reportWeather() {
+    if(!doWeather) return;
       // Send to Pebble
     var dict = {
         KEY_TEMPERATURE: parseInt(localStorage.getItem('KEY_TEMPERATURE')),
@@ -97,3 +100,29 @@ Pebble.addEventListener('ready',
     }
   }
 );
+
+Pebble.addEventListener('showConfiguration', function(e) {
+  // Show config page
+  Pebble.openURL('https://bcaller.github.io/pebble-superspinnywatch/config.html');
+});
+
+Pebble.addEventListener('webviewclosed', function(e) {
+  var configData = JSON.parse(decodeURIComponent(e.response));
+    if("BG" in configData) {
+        //VALID
+        var didWeather = doWeather;
+        doWeather = configData.WEATHER;
+        if(doWeather) localStorage.setItem('WEATHER', true);
+        else localStorage.removeItem('WEATHER');
+        
+        if(doWeather && !didWeather) getWeather();
+        
+          Pebble.sendAppMessage(configData, function() {
+            console.log('Send successful: ' + JSON.stringify(configData));
+          }, function() {
+            console.log('Send failed! ' + JSON.stringify(configData));
+          });
+    } else {
+        console.log("Config data is bad " + JSON.stringify(configData));
+    }
+});
