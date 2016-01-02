@@ -105,9 +105,7 @@
                 } else if($this.hasClass("item-color")){
                     localStorage[key] = this.value;
 					var hexStart = this.value.indexOf('0x')==0 ? 2 : 1; //0xffffff or #ffffff
-                    options[key+"_RED"] = parseInt(this.value.substring(hexStart, hexStart+2), 16);
-                    options[key+"_GREEN"] = parseInt(this.value.substring(hexStart+2, hexStart+4), 16);
-                    options[key+"_BLUE"] = parseInt(this.value.substring(hexStart+4), 16)
+                    options[key] = parseInt(this.value.substring(hexStart), 16);
                 } else {
                     localStorage[key] = options[key] = this.value
                 }
