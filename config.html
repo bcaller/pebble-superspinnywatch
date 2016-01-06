@@ -148,7 +148,7 @@
                     localStorage[key] = options[key] = this.checked ? 1 : 0
                 } else if (this.type == "radio") {
 					if(this.checked)
-						localStorage[key] = options[key] = this.value
+						localStorage[key] = options[key] = parseInt(this.value)
                 } else if($this.hasClass("item-color")){
                     localStorage[key] = this.value;
 					var hexStart = this.value.indexOf('0x')==0 ? 2 : 1; //0xffffff or #ffffff
