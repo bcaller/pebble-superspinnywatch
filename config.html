@@ -14,6 +14,22 @@
             color: #888888;
             text-align: center;
         }
+		@font-face {
+		  font-family: Alanden;
+		  src: url(fonts/Alanden_.ttf);
+		}
+		@font-face {
+		  font-family: KomikaBoogie;
+		  src: url(fonts/KOMIKABG.ttf);
+		}
+		@font-face {
+		  font-family: Neptun;
+		  src: url(fonts/Neptun.ttf);
+		}
+		@font-face {
+		  font-family: Timepiece;
+		  src: url(fonts/Timepiece.ttf);
+		}
     </style>
 </head>
 
@@ -33,41 +49,41 @@
     <div class='item-container-content'>
         <label class='item'>
             Background colour
-            <input id='background_color_picker' data-key="BG" type='text' class='item-color item-color-normal' value='#000071'>
+            <input id='background_color_picker' data-key="BG" type='text' class='item-color item-color-normal' value='#000071' />
         </label>
     </div>
 	<div class='item-container-content'>
         <label class='item'>
             Text colour
-            <input id='text_color_picker' data-key="FG" type='text' class='item-color item-color-normal' value='#ffffff'>
+            <input id='text_color_picker' data-key="FG" type='text' class='item-color item-color-normal' value='#ffffff' />
         </label>
     </div>
     <div class='item-container-content'>
         <label class='item'>
             Colour 1
-            <input id='color1_picker' data-key="C1" type='text' class='item-color item-color-normal' value='#ffff00'>
+            <input id='color1_picker' data-key="C1" type='text' class='item-color item-color-normal' value='#ffff00' />
         </label>
     </div>
     <div class='item-container-content'>
         <label class='item'>
             Colour 2
-            <input id='color2_picker' data-key="C2" type='text' class='item-color item-color-normal' value='#ffaa00'>
+            <input id='color2_picker' data-key="C2" type='text' class='item-color item-color-normal' value='#ffaa00' />
         </label>
     </div>
     <div class='item-container-content'>
         <label class='item'>
             Colour 3
-            <input id='color3_picker' data-key="C3" type='text' class='item-color item-color-normal' value='#ff55aa'>
+            <input id='color3_picker' data-key="C3" type='text' class='item-color item-color-normal' value='#ff55aa' />
         </label>
     </div>
     <div class='item-container-content'>
         <label class='item'>
             Colour 4
-            <input id='color4_picker' data-key="C4" type='text' class='item-color item-color-normal' value='#00ffff'>
+            <input id='color4_picker' data-key="C4" type='text' class='item-color item-color-normal' value='#00ffff' />
         </label>
     </div>
     <div class='item-container-footer'>
-        Choose the 4 colours for the rays, background and clock.
+        Choose the 4 colours for the rays
     </div>
 </div>
 
@@ -93,6 +109,28 @@
     </div>
 </div>
 
+<div class="item-container">
+  <div class="item-container-header">Time Font</div>
+  <div class="item-container-content" style="font-size: larger;">
+    <label class="item" style="font-family: Timepiece;">
+      12:47 &nbsp; 05:68
+      <input type="radio" class="item-radio" name="radio-font" data-key="FONT" value="0" checked="checked" />
+    </label>
+    <label class="item" style="font-family: Neptun;">
+      12:47 &nbsp; 05:68
+      <input type="radio" class="item-radio" name="radio-font" data-key="FONT" value="1" />
+    </label>
+    <label class="item" style="font-family: Alanden;">
+      12:47 &nbsp; 05:68
+      <input type="radio" class="item-radio" name="radio-font" data-key="FONT" value="2" />
+    </label>
+	<label class="item" style="font-family: KomikaBoogie;">
+      12:47 &nbsp; 05:68
+      <input type="radio" class="item-radio" name="radio-font" data-key="FONT" value="3" />
+    </label>
+  </div>
+</div>
+
 <div class='item-container'>
     <div class='button-container'>
         <input id='submit_button' type='button' class='item-button' value='SUBMIT'>
@@ -108,6 +146,9 @@
             if(key) {
                 if (this.type == "checkbox") {
                     localStorage[key] = options[key] = this.checked ? 1 : 0
+                } else if (this.type == "radio") {
+					if(this.checked)
+						localStorage[key] = options[key] = this.value
                 } else if($this.hasClass("item-color")){
                     localStorage[key] = this.value;
 					var hexStart = this.value.indexOf('0x')==0 ? 2 : 1; //0xffffff or #ffffff
@@ -151,6 +192,8 @@
             if(key && localStorage[key] != undefined) {
                 if (this.type == "checkbox")
                     this.checked = JSON.parse(localStorage[key]);
+				else if (this.type == "radio")
+					this.checked = (this.value == localStorage[key]);
                 else
                     this.value = localStorage[key];
             }
