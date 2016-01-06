@@ -29,7 +29,7 @@ bool disco_vibrate;
 #define KEY_WEATHER 203
 bool storage_ok = false;
 #define KEY_STORAGE_OK 444
-
+#define KEY_FONT 205
 
 static Window *main_window;
 static Layer *time_layer;
@@ -37,6 +37,7 @@ static Layer *spinny_layer;
 static OutlinedTextLayer *date_layer;
 static OutlinedTextLayer *weather_layer;
 static GFont font_main_big;
+static int8_t font_big_y_offset;
 static GFont font_date_small;
 static GFont font_temp_vsmall;
 static char weather_layer_buffer[32];
@@ -53,15 +54,23 @@ static GColor bg;
 static GColor fg;
 
 static const GPathInfo RIBBON_PATHINFO = {
-        6,
-        (GPoint[]) {{-10, -120},
+        10,
+        (GPoint[]) {{-3,  0},
+                    {-4, -35},
+                    {-10, -120},
                     {10,  -120},
+                    {4, -35},
                     {3,   0},
+                    {4, 35},
                     {10,  120},
                     {-10, 120},
-                    {-3,  0}}
+                    {-4, 35}}
 };
 static GPath *ribbon_path;
+
+static uint32_t custom_fonts[] = {
+    RESOURCE_ID_NEPTUN_48, RESOURCE_ID_TIMEPIECE_43, RESOURCE_ID_ALANDEN_56, RESOURCE_ID_KOMIKA_BOOGIE_48
+};
 
 void draw_bordered(GContext *ctx, const char *s_buffer, uint8_t w, uint8_t h, FontInfo *fo, int16_t x, int16_t y) {
     graphics_draw_text(ctx, s_buffer, fo, GRect(x, y, w, h), GTextOverflowModeFill, GTextAlignmentCenter, NULL);
@@ -113,7 +122,7 @@ static void time_draw(Layer *layer, GContext *ctx) {
     GRect bounds = layer_get_bounds(layer);
 
     graphics_context_set_text_color(ctx, invertIfDisconnected(bg));
-    uint8_t y = PBL_IF_ROUND_ELSE(55, 49);
+    uint8_t y = PBL_IF_ROUND_ELSE(55, 49) + font_big_y_offset;
     //Border
     surround_text(ctx, time_buffer, bounds.size.w, font_main_big, y, 50);
     //Drop Shadow
@@ -210,8 +219,9 @@ static bool persist_read_bool_def_true(int key) {
 }
 
 static void main_window_load(Window *window) {
-    font_main_big = fonts_get_system_font(FONT_KEY_ROBOTO_BOLD_SUBSET_49);
-    //font_main_big = fonts_load_custom_font(resource_get_handle(RESOURCE_ID_FONT_COOL_46));
+    int font_id = persist_read_int(KEY_FONT);
+    font_main_big = fonts_load_custom_font(resource_get_handle(custom_fonts[font_id]));
+    font_big_y_offset = font_id == 3 ? 10 : 0;
     font_date_small = fonts_get_system_font(FONT_KEY_GOTHIC_24_BOLD);
     font_temp_vsmall = fonts_get_system_font(FONT_KEY_GOTHIC_14);
     // Get information about the Window
@@ -275,6 +285,7 @@ static void main_window_unload(Window *w) {
     battery_state_service_unsubscribe();
     accel_tap_service_unsubscribe();
     tick_timer_service_unsubscribe();
+    fonts_unload_custom_font(font_main_big);
 }
 
 
@@ -321,6 +332,7 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         //perhaps settings
         storage_ok = true;
         persist_write_int(KEY_STORAGE_OK, KEY_STORAGE_OK);
+        
         bg = set_colour(iterator, KEY_BG);
         colours[0] = set_colour(iterator, KEY_C1);
         colours[1] = set_colour(iterator, KEY_C2);
@@ -329,14 +341,25 @@ static void inbox_received_callback(DictionaryIterator *iterator, void *context)
         fg = set_colour(iterator, KEY_FG);
         outlined_text_layer_set_colors(date_layer, invertIfDisconnected(bg), invertIfDisconnected(fg));
         outlined_text_layer_set_colors(weather_layer, invertIfDisconnected(bg), invertIfDisconnected(fg));
+        
+        fonts_unload_custom_font(font_main_big);
+        int font_id = dict_find(iterator, KEY_FONT)->value->int8;
+        font_main_big = fonts_load_custom_font(resource_get_handle(custom_fonts[font_id]));
+        persist_write_int(KEY_FONT, font_id);
+        font_big_y_offset = font_id == 3 ? 10 : 0;
+        
         disco_vibrate = dict_find(iterator, KEY_DISCO_VIBRATE)->value->int8 == 1;
         persist_write_bool(KEY_DISCO_VIBRATE, disco_vibrate);
+        
         bool show_weather = dict_find(iterator, KEY_WEATHER)->value->int8 == 1;
         layer_set_hidden(outlined_text_layer_get_layer(weather_layer), !show_weather);
         persist_write_bool(KEY_DISCO_VIBRATE, show_weather);
+        
         bool show_date = dict_find(iterator, KEY_DATE)->value->int8 == 1;
         layer_set_hidden(outlined_text_layer_get_layer(date_layer), !show_date);
         persist_write_bool(KEY_DATE, show_date);
+        
+        layer_mark_dirty(time_layer);
         layer_mark_dirty(spinny_layer);
     }
 }

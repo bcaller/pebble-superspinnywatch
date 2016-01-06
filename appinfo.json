@@ -8,6 +8,7 @@
         "DATE": 202,
         "DISCO_VIBRATE": 201,
         "FG": 150,
+        "FONT": 205,
         "KEY_CONDITIONS": 24,
         "KEY_TEMPERATURE": 23,
         "WEATHER": 203
@@ -20,7 +21,36 @@
     "longName": "SuperSpinnyWatch",
     "projectType": "native",
     "resources": {
-        "media": []
+        "media": [
+            {
+                "characterRegex": "[0-9:]",
+                "file": "fonts/KOMIKABG.ttf",
+                "name": "KOMIKA_BOOGIE_48",
+                "targetPlatforms": null,
+                "type": "font"
+            },
+            {
+                "characterRegex": "[0-9:]",
+                "file": "fonts/Alanden_.ttf",
+                "name": "ALANDEN_56",
+                "targetPlatforms": null,
+                "type": "font"
+            },
+            {
+                "characterRegex": "[0-9:]",
+                "file": "fonts/Neptun.ttf",
+                "name": "NEPTUN_48",
+                "targetPlatforms": null,
+                "type": "font"
+            },
+            {
+                "characterRegex": "[0-9:]",
+                "file": "fonts/Timepiece.TTF",
+                "name": "TIMEPIECE_43",
+                "targetPlatforms": null,
+                "type": "font"
+            }
+        ]
     },
     "sdkVersion": "3",
     "shortName": "Spinny",
