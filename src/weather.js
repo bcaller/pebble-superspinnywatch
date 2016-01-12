@@ -4,7 +4,8 @@
 var myAPIKey = 'c0a93048736d6dbdd3194b0086abc59a';
 
 var UPDATE_INTERVAL = 60 * 60 * 1000;
-var doWeather = localStorage.getItem('WEATHER');
+var doWeather = !localStorage.getItem('NOWEATHER');
+var fahrenheit = localStorage.getItem('TEMP_UNITS_F');
 
 var xhrRequest = function (url, type, callback) {
   var xhr = new XMLHttpRequest();
@@ -36,11 +37,10 @@ function locationSuccess(pos) {
       console.log(temperature + " Conditions " + conditions + " " + description + " " + json.name);
            
       description = description.replace(" intensity ", " ").replace(" and ", " & ").replace(" with ", " w/ ").replace("shower ", "");
-      localStorage.setItem('KEY_TEMPERATURE', temperature);
-    localStorage.setItem('KEY_CONDITIONS', description.length > 20 ? conditions : description);
+      localStorage.setItem('KEY_TEMPERATURE', temperature); //always in Celsius
+      localStorage.setItem('KEY_CONDITIONS', description.length > 20 ? conditions : description);
            localStorage.setItem('lut', Date.now());
            reportWeather();
-     
        } catch(e) {
           console.log("Error parsing weather data", e);
        }
@@ -69,6 +69,9 @@ function reportWeather() {
         KEY_TEMPERATURE: parseInt(localStorage.getItem('KEY_TEMPERATURE')),
         KEY_CONDITIONS: localStorage.getItem('KEY_CONDITIONS')
       };
+    if(fahrenheit) {
+        dict.KEY_TEMPERATURE = Math.round(dict.KEY_TEMPERATURE * 9 / 5) + 32;
+    }
     console.log(JSON.stringify(dict));
       Pebble.sendAppMessage(dict,
         function(e) {
@@ -106,22 +109,30 @@ Pebble.addEventListener('showConfiguration', function(e) {
   Pebble.openURL('https://bcaller.github.io/pebble-superspinnywatch/config.html');
 });
 
+function boolConfig(key, configData) {
+    if(configData[key]) localStorage.setItem(key, true);
+    else localStorage.removeItem(key);
+    return configData[key];
+}
+
 Pebble.addEventListener('webviewclosed', function(e) {
   var configData = JSON.parse(decodeURIComponent(e.response));
     if("BG" in configData) {
-        //VALID
+        //Valid settings
         var didWeather = doWeather;
-        doWeather = configData.WEATHER;
-        if(doWeather) localStorage.setItem('WEATHER', true);
-        else localStorage.removeItem('WEATHER');
-        
-        if(doWeather && !didWeather) getWeather();
-        
+        doWeather = configData['WEATHER'];
+        if(!doWeather) localStorage.setItem('NOWEATHER', true);
+        else localStorage.removeItem('NOWEATHER');
+        fahrenheit = boolConfig('TEMP_UNITS_F', configData);        
           Pebble.sendAppMessage(configData, function() {
             console.log('Send successful: ' + JSON.stringify(configData));
           }, function() {
             console.log('Send failed! ' + JSON.stringify(configData));
           });
+        if(doWeather) {
+            if(!didWeather) getWeather();
+            else reportWeather();
+        }
     } else {
         console.log("Config data is bad " + JSON.stringify(configData));
     }

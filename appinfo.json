@@ -5,12 +5,17 @@
         "C2": 120,
         "C3": 130,
         "C4": 140,
+        "C5": 160,
         "DATE": 202,
         "DISCO_VIBRATE": 201,
         "FG": 150,
         "FONT": 205,
         "KEY_CONDITIONS": 24,
         "KEY_TEMPERATURE": 23,
+        "N_COLOURS": 209,
+        "SIZE_DATE": 207,
+        "SIZE_WEATHER": 206,
+        "TEMP_UNITS_F": 208,
         "WEATHER": 203
     },
     "capabilities": [
@@ -24,6 +29,33 @@
         "media": [
             {
                 "characterRegex": "[0-9:]",
+                "file": "fonts/NeptunLgRnd.ttf",
+                "name": "NEPTUN_56",
+                "targetPlatforms": [
+                    "chalk"
+                ],
+                "type": "font"
+            },
+            {
+                "characterRegex": "[0-9:]",
+                "file": "fonts/AlandenLgRnd.ttf",
+                "name": "ALANDEN_65",
+                "targetPlatforms": [
+                    "chalk"
+                ],
+                "type": "font"
+            },
+            {
+                "characterRegex": "[0-9:]",
+                "file": "fonts/TimepieceLgRnd.TTF",
+                "name": "TIMEPIECE_50",
+                "targetPlatforms": [
+                    "chalk"
+                ],
+                "type": "font"
+            },
+            {
+                "characterRegex": "[0-9:]",
                 "file": "fonts/KOMIKABG.ttf",
                 "name": "KOMIKA_BOOGIE_48",
                 "targetPlatforms": null,
@@ -33,21 +65,27 @@
                 "characterRegex": "[0-9:]",
                 "file": "fonts/Alanden_.ttf",
                 "name": "ALANDEN_56",
-                "targetPlatforms": null,
+                "targetPlatforms": [
+                    "basalt"
+                ],
                 "type": "font"
             },
             {
                 "characterRegex": "[0-9:]",
                 "file": "fonts/Neptun.ttf",
                 "name": "NEPTUN_48",
-                "targetPlatforms": null,
+                "targetPlatforms": [
+                    "basalt"
+                ],
                 "type": "font"
             },
             {
                 "characterRegex": "[0-9:]",
                 "file": "fonts/Timepiece.TTF",
                 "name": "TIMEPIECE_43",
-                "targetPlatforms": null,
+                "targetPlatforms": [
+                    "basalt"
+                ],
                 "type": "font"
             }
         ]
@@ -55,7 +93,8 @@
     "sdkVersion": "3",
     "shortName": "Spinny",
     "targetPlatforms": [
-        "basalt"
+        "basalt",
+        "chalk"
     ],
     "uuid": "28e42a8a-cc8e-46e1-bce7-cf10e24f2aa0",
     "versionLabel": "1.0",
