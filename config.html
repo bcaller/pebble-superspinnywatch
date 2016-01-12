@@ -82,8 +82,24 @@
             <input id='color4_picker' data-key="C4" type='text' class='item-color item-color-normal' value='#00ffff' />
         </label>
     </div>
+    <div class='item-container-content'>
+        <label class='item'>
+            Colour 5
+            <input id='color5_picker' data-key="C5" type='text' class='item-color item-color-normal' value='#ffaa55' />
+        </label>
+    </div>
+    <div class='item-container-content'>
+        <label class='item'>
+            Number of colours
+            <select name="select-1" dir='rtl' data-key="N_COLOURS" class="item-select">
+				<option class="item-select-option" value="3">3</option>
+				<option class="item-select-option" value="4" selected="selected">4</option>
+				<option class="item-select-option" value="5">5</option>
+			</select>
+        </label>
+    </div>
     <div class='item-container-footer'>
-        Choose the 4 colours for the rays
+        Choose the 5 colours for the rays
     </div>
 </div>
 
@@ -105,6 +121,12 @@
         <label class='item'>
             Vibrate on Bluetooth disconnect
             <input id='disco_vibrate_checkbox' data-key="DISCO_VIBRATE" type='checkbox' class='item-toggle' checked="checked" />
+        </label>
+    </div>
+	<div class='item-container-content'>
+        <label class='item'>
+            Weather in Fahrenheit
+            <input id='disco_vibrate_checkbox' data-key="TEMP_UNITS_F" type='checkbox' class='item-toggle' />
         </label>
     </div>
 </div>
@@ -129,6 +151,18 @@
       <input type="radio" class="item-radio" name="radio-font" data-key="FONT" value="3" />
     </label>
   </div>
+  	<div class='item-container-content'>
+        <label class='item'>
+            Larger weather font
+            <input id='large_weather_checkbox' data-key="SIZE_WEATHER" type='checkbox' class='item-toggle' />
+        </label>
+    </div>
+	<div class='item-container-content'>
+        <label class='item'>
+            Smaller date font
+            <input id='tiny_date_checkbox' data-key="SIZE_DATE" type='checkbox' class='item-toggle' />
+        </label>
+    </div>
 </div>
 
 <div class='item-container'>
@@ -159,6 +193,13 @@
                 }
             }
         });
+		$("select").each(function() {
+			var $this = $(this);
+            var key = $this.data("key");
+            if(key) {
+				localStorage[key] = options[key] = parseInt(this.value)
+			}
+		});
 
         console.log('Got options: ' + JSON.stringify(options));
         return options;
@@ -199,6 +240,13 @@
                     this.value = localStorage[key];
             }
         });
+		$("select").each(function() {
+			var $this = $(this);
+            var key = $this.data("key");
+            if(key && localStorage[key] != undefined) {
+				this.value = localStorage[key];
+			}
+		});
     })();
 </script>
 </html>
