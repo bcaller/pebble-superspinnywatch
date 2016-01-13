@@ -8,3 +8,6 @@ Features I've added:
 * Weather
 * Number of rays decreses with the battery level
 * Vibrate on Bluetooth disconnect
+
+![basalt watchface](https://bcaller.github.io/pebble-superspinnywatch/img/basalt.gif)
+![chalk watchface](https://bcaller.github.io/pebble-superspinnywatch/img/chalk.gif)
