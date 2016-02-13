@@ -23,6 +23,7 @@
 #define KEY_FONT 205
 #define KEY_TEMP_UNITS_F 208
 #define KEY_N_COLOURS 209
+#define KEY_DESATURATE 210
 
 #define KEY_SIZE_WEATHER 206
 #define WEATHER_SIZE_TINY true
@@ -119,6 +120,9 @@ void update_settings(DictionaryIterator *iterator) {
 
     settings.disco_vibrate = dict_find(iterator, KEY_DISCO_VIBRATE)->value->int8 == 1;
     persist_write_bool(KEY_DISCO_VIBRATE, settings.disco_vibrate);
+    
+    settings.disco_desaturate = dict_find(iterator, KEY_DESATURATE)->value->int8 == 1;
+    persist_write_bool(KEY_DESATURATE, settings.disco_desaturate);
 
     settings.show_weather = dict_find(iterator, KEY_WEATHER)->value->int8 == 1;
     persist_write_bool(KEY_WEATHER, settings.show_weather);
@@ -147,6 +151,7 @@ void init_settings() {
         .fg = persist_read_colour(KEY_FG, DEF_FG),
         //Settings
         .disco_vibrate = persist_read_bool_def(KEY_DISCO_VIBRATE, true),
+        .disco_desaturate = persist_read_bool_def(KEY_DESATURATE, true),
         .show_weather = persist_read_bool_def(KEY_WEATHER, true),
         .show_date = persist_read_bool_def(KEY_DATE, true),
         .fahrenheit = persist_read_bool_def(KEY_TEMP_UNITS_F, false),

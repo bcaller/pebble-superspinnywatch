@@ -7,6 +7,7 @@
         "C4": 140,
         "C5": 160,
         "DATE": 202,
+        "DESATURATE": 210,
         "DISCO_VIBRATE": 201,
         "FG": 150,
         "FONT": 205,
@@ -23,10 +24,29 @@
         "configurable"
     ],
     "companyName": "BenCaller",
+    "enableMultiJS": false,
     "longName": "SuperSpinnyWatch",
     "projectType": "native",
     "resources": {
         "media": [
+            {
+                "characterRegex": "[0-9:]",
+                "file": "fonts/TimepieceLgRnd.TTF",
+                "name": "TIMEPIECE_50",
+                "targetPlatforms": [
+                    "chalk"
+                ],
+                "type": "font"
+            },
+            {
+                "characterRegex": "[0-9:]",
+                "file": "fonts/Timepiece.TTF",
+                "name": "TIMEPIECE_43",
+                "targetPlatforms": [
+                    "basalt"
+                ],
+                "type": "font"
+            },
             {
                 "characterRegex": "[0-9:]",
                 "file": "fonts/NeptunLgRnd.ttf",
@@ -38,19 +58,10 @@
             },
             {
                 "characterRegex": "[0-9:]",
-                "file": "fonts/AlandenLgRnd.ttf",
-                "name": "ALANDEN_65",
+                "file": "fonts/Neptun.ttf",
+                "name": "NEPTUN_48",
                 "targetPlatforms": [
-                    "chalk"
-                ],
-                "type": "font"
-            },
-            {
-                "characterRegex": "[0-9:]",
-                "file": "fonts/TimepieceLgRnd.TTF",
-                "name": "TIMEPIECE_50",
-                "targetPlatforms": [
-                    "chalk"
+                    "basalt"
                 ],
                 "type": "font"
             },
@@ -72,19 +83,10 @@
             },
             {
                 "characterRegex": "[0-9:]",
-                "file": "fonts/Neptun.ttf",
-                "name": "NEPTUN_48",
+                "file": "fonts/AlandenLgRnd.ttf",
+                "name": "ALANDEN_65",
                 "targetPlatforms": [
-                    "basalt"
-                ],
-                "type": "font"
-            },
-            {
-                "characterRegex": "[0-9:]",
-                "file": "fonts/Timepiece.TTF",
-                "name": "TIMEPIECE_43",
-                "targetPlatforms": [
-                    "basalt"
+                    "chalk"
                 ],
                 "type": "font"
             }

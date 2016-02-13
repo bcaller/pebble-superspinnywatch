@@ -63,7 +63,7 @@ static GColor desaturate(GColor c) {
 }
 
 static GColor alterIfDisconnected(GColor c) {
-    return bluetooth ? c : desaturate(c);
+    return bluetooth || (!settings.disco_desaturate) ? c : desaturate(c);
 }
 
 void surround_text(GContext *ctx, const char *s_buffer, uint8_t w, FontInfo *fo, int16_t y, uint8_t h) {

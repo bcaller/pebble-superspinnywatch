@@ -5,6 +5,7 @@
 
 typedef struct Settings {
     bool disco_vibrate;
+    bool disco_desaturate;
     bool storage_ok;
     bool show_weather;
     bool show_date;
